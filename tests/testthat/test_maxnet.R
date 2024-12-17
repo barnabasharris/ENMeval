@@ -319,3 +319,29 @@ test_clamp(envs, e@occs, e@bg, categoricals = cats1)
 context(paste("Testing clamping function for", alg, "with two categorical variables..."))
 if(skip_tests_for_cran == FALSE & alg != "bioclim") test_clamp(envs.2cat, e.2cat@occs, e.2cat@bg, categoricals = c("biome.1", "biome.2"))
 
+# block partitions with doParallel, partition validation bg
+if(skip_tests_for_cran == FALSE) {
+  context(paste("Testing ENMevaluate for", alg, "with block partitions using doParallel..."))
+  e.snow <- ENMevaluate(occs, envs, bg, tune.args = tune.args, partitions = "block",
+                        partition.settings = list(orientation = 'lon_lat'),
+                        algorithm = alg, categoricals = cats1, overlap = TRUE, quiet = TRUE,
+                        parallel = TRUE, parallelType = "doParallel",
+                        other.settings = list(validation.bg = "partition"))
+  
+  
+  test_ENMevaluation(e, alg, "block", tune.args, 4, 4)
+  
+  context(paste("Testing evalplot.stats for", alg, "with block partitions using doParallel..."))
+  test_evalplot.stats(e)
+  context(paste("Testing evalplot.envSim.hist for", alg, "with block partitions using doParallel..."))
+  test_evalplot.envSim.hist(e, e@occs, e@bg, e@occs.grp, e@bg.grp)
+  context(paste("Testing evalplot.envSim.map for", alg, "with block partitions using doParallel..."))
+  test_evalplot.envSim.map(e, envs, e@occs, e@bg, e@occs.grp, e@bg.grp)
+  
+  context(paste("Testing ENMnulls for", alg, "with block partitions using doParallel..."))
+  ns <- ENMnulls(e, mod.settings = mset, no.iter = no.iter, quiet = TRUE, parallel = TRUE, parallelType = "doParallel")
+  test_ENMnulls(e, ns, no.iter, alg, "block", mset, 4, 4)
+  
+  context(paste("Testing evalplot.nulls for", alg, "with block partitions using doParallel..."))
+  test_evalplot.nulls(ns)
+}

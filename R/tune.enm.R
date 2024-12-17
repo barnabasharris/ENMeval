@@ -82,15 +82,21 @@ tune.validate <- function(enm, occs.train.z, occs.val.z, bg.train.z, bg.val.z,
     auc.val <- e.val@stats$auc
     # calculate AUC diff as training AUC minus validation AUC with a shared background
     auc.diff <- auc.train - auc.val
-    # calculate CBI based on the full background (do not calculate for jackknife partitions)
     if(other.settings$ecospat.use == TRUE) {
       if(partitions != "jackknife") {
-        cbi.val <- ecospat::ecospat.boyce(c(bg.train.pred, bg.val.pred, occs.val.pred), occs.val.pred, PEplot = FALSE)$cor  
+        cbi.curve <- ecospat::ecospat.boyce(
+          c(bg.train.pred, bg.val.pred, occs.val.pred),
+          occs.val.pred, 
+          PEplot = FALSE, 
+          nclass=0)
+        cbi.val <- cbi.curve$cor
       }else{
         cbi.val <- NA
+        cbi.curve <- NA
       }
     }else{
       cbi.val <- NA
+      cbi.curve <- NA
     }
     # if validation.bg == "partition", calculate training and validation AUC and CBI based on the partitioned backgrounds only 
     # (training background for training statistics and validation background for validation statistics) 
@@ -104,12 +110,22 @@ tune.validate <- function(enm, occs.train.z, occs.val.z, bg.train.z, bg.val.z,
     # calculate CBI based on the validation background only (do not calculate for jackknife partitions)
     if(other.settings$ecospat.use == TRUE) {
       if(partitions != "jackknife") {
-        cbi.val <- ecospat::ecospat.boyce(c(bg.val.pred, occs.val.pred), occs.val.pred, PEplot = FALSE)$cor
+        cbi.curve <- 
+          ecospat::ecospat.boyce(
+            c(bg.val.pred, occs.val.pred),
+            occs.val.pred, 
+            PEplot = FALSE, 
+            nclass=0)
+        
+        cbi.val <- cbi.curve$cor
+        
       }else{
         cbi.val <- NA
+        cbi.curve <- NA
       }
     }else{
       cbi.val <- NA
+      cbi.curve <- NA
     }
   }
   
@@ -138,7 +154,12 @@ tune.validate <- function(enm, occs.train.z, occs.val.z, bg.train.z, bg.val.z,
   }
   
   # gather all evaluation statistics for k
-  out.df <- data.frame(auc.val = auc.val, auc.diff = auc.diff, cbi.val = cbi.val, or.mtp = or.mtp, or.10p = or.10p)
+  out.df <- 
+    tibble::tibble(
+      auc.val = auc.val, auc.diff = auc.diff,
+      cbi.val = cbi.val, or.mtp = or.mtp, or.10p = or.10p,
+      pes = list(pes_curve = cbi.curve))
+  
   if(!is.null(user.eval.out)) out.df <- cbind(out.df, user.eval.out)
   
   return(out.df)

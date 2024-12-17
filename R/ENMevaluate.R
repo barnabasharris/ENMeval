@@ -788,6 +788,21 @@ ENMevaluate <- function(occs, envs = NULL, bg = NULL, tune.args = NULL,
     # if tune.tbl exists, make tune.args column a factor to keep order after using dplyr functions
     if(!is.null(tune.tbl)) val.stats.all$tune.args <- factor(val.stats.all$tune.args, levels = tune.names)
     
+    # extract pes curves
+    cv.stat.pes <- 
+      val.stats.all$pes
+    
+    # remove from tibble
+    val.stats.all$pes <- NULL
+    
+    # add fold and tune args to pes curves
+    for (i in (1:nrow(val.stats.all))) {
+      cv.stat.pes[[i]]$tune.args <- val.stats.all[i,]$tune.args
+      cv.stat.pes[[i]]$fold <- val.stats.all[i,]$fold
+    }
+    cv.stat.pes.df <- as.data.frame(do.call('rbind',cv.stat.pes))
+    
+    
     # calculate summary statistics
     cv.stats.sum <- val.stats.all |> 
       dplyr::group_by(tune.args) |>
@@ -862,6 +877,7 @@ ENMevaluate <- function(occs, envs = NULL, bg = NULL, tune.args = NULL,
   # assemble the ENMevaluation object
   e <- ENMevaluation(algorithm = enm@name, tune.settings = as.data.frame(tune.tbl),
                      results = as.data.frame(eval.stats), results.partitions = val.stats.all,
+                     pes.partitions = cv.stat.pes.df,
                      predictions = mod.full.pred.all, models = mod.full.all, 
                      variable.importance = variable.importance.all,
                      partition.method = partitions, partition.settings = partition.settings,

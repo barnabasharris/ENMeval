@@ -483,3 +483,87 @@ loadENMevaluation <- function(filename) {
 #   }
 #   return(envs)
 # }
+
+#' @title Reclassify model predictions according to deviation from random model
+#' @description Reclassify predictions into 3 or more meaningful classes based on deviation
+#' of predicted occurrences per prediction window from expected number of occurrences based on
+#' geographical area alone
+#' @param e ENMevaluation object
+#' @param quantiles numeric: quantiles to use to calculate confidence intervals from all partition cbis
+#' @param loess_span numeric: span for loess smoothing model applied to P/E
+#' @export
+#' 
+plotCBIcurves <- 
+  function(e, quantiles=c(.1,.9), loess_span = 0.2) {
+    # get p/e curve
+    # e <- e.snow
+    pes <- e@pes.partitions
+    
+    pes$tune.args <- unlist(e@pes.partitions$tune.args)
+    
+    pes.models <- 
+      pes %>%
+      group_by(tune.args,fold) %>% 
+      reframe(
+        F.ratio = 
+          unlist(F.ratio),
+        HS = 
+          unlist(HS),
+      ) %>% 
+      group_by(tune.args,fold) %>% 
+      mutate(id = 1:n())
+    
+    pes.cv.sum <- 
+      pes.models %>% 
+      group_by(tune.args,id) %>% 
+      summarise(
+        mean_cv_pe = mean(F.ratio, na.rm=T),
+        med_cv_pe = median(F.ratio, na.rm=T),
+        mean_hs = mean(HS),
+        q_lo = quantile(F.ratio,probs=quantiles,names=F,na.rm=T)[1],
+        q_hi = quantile(F.ratio,probs=quantiles,names=F,na.rm=T)[2],
+        sd_cv_pe = sd(F.ratio),
+        folds = n()
+      ) %>% 
+      mutate(
+        across(
+          .cols = 
+            c(mean_cv_pe,
+              med_cv_pe,
+              q_lo,
+              q_hi
+              ),
+          .fns = 
+            ~predict(loess(.x ~ mean_hs, span = loess_span),mean_hs),
+          .names = '{.col}_loess'
+        )
+      ) %>% 
+      tidyr::fill(
+        c(mean_cv_pe_loess,
+          med_cv_pe_loess,
+          q_lo_loess,
+          q_hi_loess
+          ),
+        .direction='downup'
+      )
+    
+    (p <- ggplot(pes.cv.sum) + 
+      geom_ribbon(
+        aes(
+          ymin = q_lo,
+          ymax = q_hi,
+          x = mean_hs
+        ),
+        alpha=0.35
+      ) +
+      geom_line(aes(x = mean_hs,y=med_cv_pe))+
+      geom_hline(yintercept = 1) + 
+      facet_wrap(~tune.args) + 
+      xlab('Habitat suitability') + 
+      ylab('P/E ratio')
+    )
+    
+    l <- list(p = p,pes.cv.sum = pes.cv.sum)
+    
+    return(l)
+  }

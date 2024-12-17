@@ -24,6 +24,7 @@ NULL
 #' @slot bg.grp vector: partition groups for background points
 #' @slot overlap list: matrices of pairwise niche overlap statistics
 #' @slot rmm list: the rangeModelMetadata objects for each model
+#' @slot pes.partitions data frame: data frame of p/e curves for each partition
 #' 
 #' @details The following are brief descriptions of the columns in the results table, which prints
 #' when accessing `e@results` or `results(e)` if `e` is the ENMevaluation object. Those columns
@@ -96,7 +97,8 @@ ENMevaluation <- setClass("ENMevaluation",
                                     bg = 'data.frame',
                                     bg.grp = 'factor',
                                     overlap = 'list',
-                                    rmm = 'list'))
+                                    rmm = 'list',
+                                    pes.partitions = 'data.frame'))
 
 #' @title eval.algorithm generic for ENMevaluation object
 #' @param x ENMevaluation object
